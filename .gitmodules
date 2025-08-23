@@ -1,0 +1,3 @@
+[submodule "madmat"]
+	path = madmat
+	url = git@github.com:madpang/madmat.git
