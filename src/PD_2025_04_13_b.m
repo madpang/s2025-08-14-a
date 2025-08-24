@@ -8,7 +8,7 @@
 	- It assumes uniform scattering energy loss and only focus on the *level* of the received signal which directly relates to attenuation.
 	- One can think of the media model consists of point scatterers with the same echogenicity, but has a varying attenuation map.
 	- By visualizing the *beamformed* `rcvLvl` data (one needs the pixel index `roiIdx` to restore it into grid), one can gain intuitive insights on the *posterior shadows*.
-	@date: [created: 2025-04-13, updated: 2025-08-23]
+	@date: [created: 2025-04-13, updated: 2025-08-24]
 	@author: madpang
 %}
 
@@ -39,10 +39,12 @@ elePos = CirclePoints(R, eleNum, -pi/2 + pi/eleNum, [0, 0]);
 % USCT element directivity, in Cartesian coordinates
 eleDir = CirclePoints(1, eleNum, pi/2 + pi/eleNum, [0, 0]);
 
-% Number of Tranmissions
+% Number of Transmissions
 txNum = 256;
-% Tranmission directions, (x, y) in Cartesian coordinates
+% Transmission directions, (x, y) in Cartesian coordinates
 txDir = CirclePoints(1, txNum, pi/2, [0, 0]);
+% Transmission aperture moving step size
+txStepSz = eleNum / txNum;
 
 % Breast region parameters, (center, radius [mm], attenuation [dB/MHz/cm])
 region1 = {[0, 0], 80, -0.4};
@@ -72,8 +74,8 @@ startStamp = sprintf('Computation started at %s \n', char(datetime('now')));
 fprintf(startStamp);
 for ii = 1 : txNum
 	% TX/RX aperture elements index
-	txEleIdx = mod1(paren(circshift(1 : eleNum, txApSz/2), 1 : txApSz) + ii-1, eleNum);
-	rxEleIdx = mod1(paren(circshift(1 : eleNum, rxApSz/2), 1 : rxApSz) + ii-1, eleNum);
+	txEleIdx = mod1(paren(circshift(1 : eleNum, txApSz/2), 1 : txApSz) + (ii-1) * txStepSz, eleNum);
+	rxEleIdx = mod1(paren(circshift(1 : eleNum, rxApSz/2), 1 : rxApSz) + (ii-1) * txStepSz, eleNum);
 
 	txApDir = txDir(ii, :);
 	txDirNormal = [0, -1; 1, 0] * txApDir.';
@@ -97,8 +99,8 @@ for ii = 1 : txNum
 		), ...
 		'w' ...
 	);
-	fwrite(fhIdx, single(roiIdx), 'single');
-	fclose(fhIdx);	
+	fwrite(fhIdx, roiIdx, 'logical');
+	fclose(fhIdx);
 
 	% Compute the received signal level at each pixel in ROI
 	roiPos = gridPos(roiIdx, :);
