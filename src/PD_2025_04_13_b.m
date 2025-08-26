@@ -10,6 +10,10 @@
 	- By visualizing the *beamformed* `rcvLvl` data (one needs the pixel index `roiIdx` to restore it into grid), one can gain intuitive insights on the *posterior shadows*.
 	@date: [created: 2025-04-13, updated: 2025-08-24]
 	@author: madpang
+
+	@note:
+	- This script requires [madmat](https://github.com/madpang/madmat) package.
+	- This script depends on calc1wAttExt.m
 %}
 
 % --- Helper functions ---
@@ -70,8 +74,8 @@ fc = 3.6;
 
 % --- Main loop ---
 % Compute the received signal level at each pixel in ROI for each TX 
-startStamp = sprintf('Computation started at %s \n', char(datetime('now')));
-fprintf(startStamp);
+startStamp = sprintf('Computation started at %s', char(datetime('now')));
+fprintf('%s\n', startStamp);
 for ii = 1 : txNum
 	% TX/RX aperture elements index
 	txEleIdx = mod1(paren(circshift(1 : eleNum, txApSz/2), 1 : txApSz) + (ii-1) * txStepSz, eleNum);
@@ -151,76 +155,25 @@ for ii = 1 : txNum
 	str_p1 = sprintf('%5.1f%', per * 100);
 	str_p2 = [ ...
 		'[', ...
-		repmat('>', 1, floor(per * 10)), ...
-		repmat(' ', 1, 10 - floor(per * 10)) ...
+		repmat('>', 1, floor(per * 50)), ...
+		repmat(' ', 1, 50 - floor(per * 50)) ...
 		']' ...
 	];
 	fprintf([str_p1, '%%', ' ', str_p2]);
-	fprintf('\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b');		
+	fprintf('\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b');
 end
-finishStamp = sprintf('Computation ended at %s \n',  char(datetime('now')));
-fprintf(finishStamp);
+fprintf('\n');
+finishStamp = sprintf('Computation ended at %s',  char(datetime('now')));
+fprintf('%s\n', finishStamp);
 
 % --- Log ---
 logFile = fullfile(outputDir, 'process.log');
 fid = fopen(logFile, 'a');
 fprintf(fid, '%s\n', '---');
 fprintf(fid, 'Script %s.m executed on %s\n', mfilename, char(java.net.InetAddress.getLocalHost.getHostName));
-fprintf(fid, '%s', startStamp);
-fprintf(fid, '%s', finishStamp);
+fprintf(fid, '%s\n', startStamp);
+fprintf(fid, '%s\n', finishStamp);
 fclose(fid);
 
 % --- Clean up ---
 rmpath(wsPath);
-
-% --- Local function(s) ---
-%{
-	@brief: Calculate the signal level at a specific pixel w/ a specific model
-	@usage: rcvLvl = calc1wAttExt(txPos, pixPos, region1Param, region2Param, freq, scattLoss, isSpread, pixSz)
-
-	@param[out]:
-	- rcvLvl: signal level at the pixel [dB].
-	@param[in]:
-	- txPos: transmission position, 2D vector, [x, y];
-	- pixPos: pixel position, 2D vector, [x, y];
-	- region1Param: parameter of region 1, cell array, {(x, y), r, att}
-		- (x, y): center position of the region [mm]
-		- r: radius of the region [mm]
-		- att: attenuation coefficient [dB/MHz/cm]
-	- region2Param: parameter of region 2, cell array, {(x, y), r, att}
-	- freq: transmission wave central frequency [MHz]
-	- scattLoss: scattering energy loss, scalar [dB]
-	- isSpread: whether to consider spreading, bool
-	- pixSz: pixel size, scalar [mm]
-
-	@details:
-	- This function calculates the received signal from a given point in ROI (pixel) on specific RX ch., given an *extra* attenuation area with disk shape, defined by {cent, r, att}, which represents center, radius and attenuation coefficient, respectively.
-	- Scatterer is assumed to have size of the pixel grid (due to the requirement of finite power/energy and finite intensity).
-	- Energy/power spreading from a point source is modeled, but if plane wave TX is modeled, there should be no need to account for spreading during TX.
-	- This function depends on CircXLine.m
-
-	@author: madpang
-	@date: [created: 2025-04-13, updated: 2025-04-13]
-%}
-function rcvLvl = calc1wAttExt(txPos, pixPos, region1Param, region2Param, freq, scattLoss, isSpread, pixSz)
-	% Parameter derivation
-	[regPos1, regR1, regAc1] = region1Param{:};
-	[regPos2, regR2, regAc2] = region2Param{:};
-	a0 = 0;
-	a1 = regAc1 * freq / 10;
-	a2 = regAc2 * freq / 10;
-	[~, ~, len1, dist_1w] = CircXLine(pixPos.', txPos.', regPos1.', regR1, 'segment');
-	len2 = CircXLine(pixPos.', txPos.', regPos2.', regR2, 'segment');
-	% Account for spreading
-	if isSpread
-		att_spr = 10 * log10(pixSz ./ (2 * pi * dist_1w));
-	else
-		att_spr = 0;
-	end
-	% Compute attenuation level
-	rcvLvl = a0 .* dist_1w + ...
-		(a1 - a0) .* len1 + ...
-		(a2 - a1) .* len2 + ...
-		scattLoss + ...
-		att_spr;
-end
