@@ -1,5 +1,5 @@
 %{
-	@brief: Calculate the signal level at a specific pixel w/ a specific model
+	@brief: Calculate the signal level at a specific pixel w/ a specific model.
 	@usage: rcvLvl = calc1wAttExt(txPos, pixPos, region1Param, region2Param, freq, scattLoss, isSpread, pixSz)
 
 	@param[out]:
