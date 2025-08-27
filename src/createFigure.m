@@ -1,29 +1,47 @@
 %{ 
 	@brief: Create a MATLAB figure window with proper size, position and aspect ratio.
 
+	@details:
+	- This function allows figure window configuration using custom unit, so the caller can think about the aspect ratio, and focus on the real asset where pixels will be painted.
+	- It also puts the figure in the center of the screen for better visibility.
+
 	@param[out]:
 	- hF: handle to the created figure
 	@param[in]:
-	- num_ax: number of *canvas* axes in the figure, [row_num, col_num]
-	- num_unit: aspect ratio of height and width, [height_unit, width_unit], in terms of number of unit size
-	- unit_sz: unit size, for HiDPI monitor, it is in terms of *logical* pixels
-%}
-function hF = createFigure(num_ax, num_unit, unit_sz)
-	% Get the screen size to proper positioning
-	screen_sz = get(groot, 'ScreenSize');
-	bk_color = '#FFFFFF';
+	- unitLength: length of each unit, in pixels
+	- realAssetSize: [width, height] of the real asset, in units
+	- marginSize: [horizontal, vertical] margins, in units
 
-	fig_height = (num_unit(1) * num_ax(1) + (num_ax(1) - 1) * 2 + 1 * 2) * unit_sz;
-	fig_width = (num_unit(2) * num_ax(2) + (num_ax(2) - 1) * 2 + 2 * 2) * unit_sz;
+	@author: madpang
+	@date: [created: 2025-04-13, updated: 2025-08-27]
+%}
+function hF = createFigure(unitLength, realAssetSize, marginSize, varargin)
+
+	% --- Minimal argument check & parsing
+	narginchk(3, 4);
+	if length(varargin) >= 1
+		backgroundColor = varargin{1};
+	else
+		backgroundColor = '#FFFFFF';
+	end
+
+	% --- Get the screen size to proper positioning
+	% screenSize = [x, y, width, height]
+	screenSize = get(groot, 'ScreenSize');
+
+	% --- Set figure window
+	% @note: This excludes the figure borders, title bar, menu bar, and tool bars
+	% figureSize = [figureWidth, figureHeight]
+	figureSize = (realAssetSize + 2 * marginSize) * unitLength;
 
 	hF = figure( ...
 		'Units', 'pixels', ...
 		'Position', [ ...
-			(screen_sz(3) - fig_width)/2 + 1, ...
-			(screen_sz(4) - fig_height)/2 + 1, ...
-			fig_width, ...
-			fig_height ...
-		], ... % canvas size, excluding the figure borders, title bar, menu bar, and tool bars
-		'Color', bk_color ...
+			(screenSize(3) - figureSize(1))/2 + 1, ...
+			(screenSize(4) - figureSize(2))/2 + 1, ...
+			figureSize(1), ...
+			figureSize(2) ...
+		], ...
+		'Color', backgroundColor ...
 	);
 end
