@@ -6,6 +6,9 @@
 	@author: madpang
 %}
 
+% --- Random seed for reproducibility ---
+rng(42, "twister"); % Set fixed seed for reproducible results
+
 % --- Helper functions ---
 % Functional style subset extraction
 fParen = @(x, varargin) x(varargin{:});
@@ -98,10 +101,21 @@ mask5 = fMask(0, 0, 5e-3);
 A_MAP(mask5) = att1;
 D_MAP(mask5) = fDisperse(rho0, rho1, nnz(mask5), 1/20);
 
-% --- Save map to data ---
-% @todo: save varaible to binary file
+%% /// Save map to data ///
+% Save maps as binary files with double precision
+fhC = fopen(fullfile(outputDir, 'C_MAP.bin'), 'w');
+fwrite(fhC, C_MAP, 'double');
+fclose(fhC);
 
-%% Visualization
+fhA = fopen(fullfile(outputDir, 'A_MAP.bin'), 'w');
+fwrite(fhA, A_MAP, 'double');
+fclose(fhA);
+
+fhD = fopen(fullfile(outputDir, 'D_MAP.bin'), 'w');
+fwrite(fhD, D_MAP, 'double');
+fclose(fhD);
+
+%% /// Visualization ///
 figure; imagesc(D_MAP); axis image; colorbar;
 figure; imagesc(A_MAP); axis image; colorbar;
 figure; imagesc(C_MAP); axis image; colorbar;
