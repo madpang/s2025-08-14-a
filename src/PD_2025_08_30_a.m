@@ -14,90 +14,82 @@
 ws = fileparts(fileparts(mfilename('fullpath')));
 wsPath = sprintf('%1$s/src:%1$s/madmat', ws);
 addpath(wsPath);
-% What:
-% - check the symmetry of configuration, before pressure field computation
-% - 2048-element w/ rift
-% How:
-% - this is a DEMO of SYMMETRIC configuration --- important for k-wave based simulation
-% When:
-% - created on 2022-03-03
-% - lasted modified on 2022-03-03
-% ================================================================
+inputDir = fullfile(ws, 'data', '2025-08-28-a');
+if ~isfolder(inputDir)
+	error('Input directory does not exist: %s', inputDir);
+end
+outputDir = fullfile(ws, 'data', '2025-08-30-a');
+if ~exist(outputDir, 'dir')
+	mkdir(outputDir);
+end
 
-%%
-% Simulation parameters setup
-% ----------------------------------------------------------------
-% number of grid per dim
-grid_num = 2048;
-% grid size per dim [m]
-grid_sz = 0.125e-3;
-% define the grid → align w/ kWaveGrid
-grid_pos = transpose(RegularGrid( ...
-	grid_sz .* [1, 1], ...
-	grid_num .* [1, 1], ...
-	grid_sz/2 .* [-1, 1] ...
-));
-
-% sampling frequency [Hz] → align w/ COCOLY
-fs = 31.25e+6;
-dt = 1/fs;
-% number of samples per channel → align w/ COCOLY
-sample_num = 5e+3; % [NOTE] NO need to record reflected signal
-
-% ########## kgrid ###############################################
-% kgrid = kWaveGrid(grid_num, grid_sz, grid_num, grid_sz);
-% kgrid.setTime(sample_num, dt);
-% ////////////////////////////////////////////////////////////////
-
-% background properties → water, non-attenuating
-c0 = fT2C(36.8); % [m/s]
-rho0 = 1000; % [kg/m^3]
-
-% ########## medium ##############################################
-% non-absorbing 
-medium.sound_speed = c0;
-medium.density = rho0;
-% ////////////////////////////////////////////////////////////////
-
-% radius of USCT ring [m]
-usct_radius = 117 * 1e-3;
-% number of transducer elements
-ele_num = 2048;
-% rift size, in terms of number of elements, between 8 transducer blocks
-rift_sz = 14;
-% transducer blocks number
-blk_num = 8;
-% dummy transducer number if there were NO rifts
-dummy_num = ele_num + rift_sz * blk_num;
-% number of independent channels per TX event
-ch_num = 256;
-
-% define dummy element position uniformally distributed on the ring
-dummy_pos = transpose(CirclePoints( ...
-	usct_radius, ...
-	dummy_num, ...
-	-pi/2 + pi/dummy_num, ...
-	grid_sz/2 .* [-1, 1] ...
-));
-
-% index to select the actual elements
-ele_idx = repmat((1 : ch_num).', 1, blk_num) + ...
-	((rift_sz / 2) : (ch_num + rift_sz) : (rift_sz / 2 + (ch_num + rift_sz) * (blk_num - 1)));
-
-ele_pos = dummy_pos(:, ele_idx);
-
-ele_mask = zeros([grid_num, grid_num]);
-ele_mask_idx = sub2ind( ...
-	grid_num .* [1, 1], ...
-	round(-(ele_pos(2, :) - grid_pos(2, 1)) ./ grid_sz) + 1, ...
-	round((ele_pos(1, :) - grid_pos(1, 1)) ./ grid_sz) + 1 ...
+% --- Parameters configuration ---
+% Number of grid per dim
+gridNum = 2048;
+% Grid size per dim [m]
+gridSz = 0.125e-3;
+% Center position (account for kGrid off-centric issue)
+centPos = gridSz/2 .* [-1, 1];
+% Define the grid to align w/ kWaveGrid
+gridPos = RegularGrid( ...
+	gridSz .* [1, 1], ...
+	gridNum .* [1, 1], ...
+	centPos ...
 );
 
-ele_mask(ele_mask_idx) = 1;
+% USCT radius [m]
+R = 117.0e-3;
+% USCT number of elements
+eleNum = 2048;
+% USCT elements position, (x, y) in Cartesian coordinates
+elePos = CirclePoints(R, eleNum, -pi/2 + pi/eleNum, centPos);
+
+% Tranmission wave central frequency [Hz]
+fc = 3.6e+6;
+% Sampling frequency [Hz], align w/ COCOLY RingEcho system
+fs = 31.25e+6;
+dt = 1/fs;
+% Number of samples per channel, align w/ COCOLY RingEcho system
+ns = 9344;
+
+% --- Load the medium data
+fhC = fopen(fullfile(inputDir, 'C_MAP.bin'), 'r');
+C_MAP = reshape(fread(fhC, Inf, 'double'), [gridNum, gridNum]);
+fclose(fhC);
+fhA = fopen(fullfile(inputDir, 'A_MAP.bin'), 'r');
+A_MAP = reshape(fread(fhA, Inf, 'double'), [gridNum, gridNum]);
+fclose(fhA);
+fhD = fopen(fullfile(inputDir, 'D_MAP.bin'), 'r');
+D_MAP = reshape(fread(fhD, Inf, 'double'), [gridNum, gridNum]);
+fclose(fhD);
+
+% --- k-Wave setup ---
+% --- kgrid
+% kgrid = kWaveGrid(gridNum, gridSz, gridNum, gridSz);
+% kgrid.setTime(ns, dt);
+
+% --- medium
+% compensation of non-unit power coefficient of attenuation law
+b = 1.9;
+medium = struct( ...
+	'sound_speed', C_MAP, ...
+	'density', D_MAP, ...
+	'alpha_power', b, ...
+	'alpha_coeff', A_MAP .* (fc/1e+6) / (fc/1e+6)^b ...
+);
+
+% --- sensor (full RX)
+sensorMask = zeros(gridNum, gridNum);
+sensorMaskIndex = sub2ind( ...
+	gridNum .* [1, 1], ...
+	round(-(elePos(:, 2) - gridPos(1, 2)) ./ gridSz) + 1, ...
+	round((elePos(:, 1) - gridPos(1, 1)) ./ gridSz) + 1 ...
+);
+sensorMask(sensorMaskIndex) = 1;
 
 % CHECKPOINT
 % >	draw the elements
-	S = ele_mask + flipud(ele_mask) + fliplr(ele_mask) + rot90(ele_mask, 2);
+	S = sensorMask + flipud(sensorMask) + fliplr(sensorMask) + rot90(sensorMask, 2);
 	figure;
 	if nnz(S(:)) ~= 2048
 		disp('WARNING: the source/sensor element is NOT symmetric on GRID');
