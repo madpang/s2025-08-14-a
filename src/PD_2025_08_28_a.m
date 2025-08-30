@@ -16,7 +16,7 @@ fParen = @(x, varargin) x(varargin{:});
 % --- Workspace ---
 % @note: Assuming directory structure -- `<workspace-name>/src/<this-script>.m`
 ws = fileparts(fileparts(mfilename('fullpath')));
-wsPath = genpath(ws);
+wsPath = sprintf('%1$s/src:%1$s/madmat', ws);
 addpath(wsPath);
 outputDir = fullfile(ws, 'data', '2025-08-28-a');
 if ~exist(outputDir, 'dir')

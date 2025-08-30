@@ -1,9 +1,7 @@
 %{
 	@file: PD_2025_04_13_b.m
-	@brief: Investigate posterior shadows behind an object with strong attenuation.
+	@brief: Forward simulation using a full set of plane wave TXs, an analytical model of breast with tumor, for posterior shadows exploration.
 	@details:
-	- This script performs forward simulation using a full set of plane wave TXs;
-	- It uses an analytical model of breast with tumor;
 	- It computes the received signal level at each pixel in the region of interest (ROI) for each transmission.
 	- It assumes uniform scattering energy loss and only focus on the *level* of the received signal which directly relates to attenuation.
 	- One can think of the media model consists of point scatterers with the same echogenicity, but has a varying attenuation map.
@@ -27,7 +25,7 @@ fMod1 = @(X, n) mod(X - 1, n) + 1;
 % --- Workspace ---
 % @note: Assuming directory structure -- `<workspace-name>/src/<this-script>.m`
 ws = fileparts(fileparts(mfilename('fullpath')));
-wsPath = genpath(ws);
+wsPath = sprintf('%1$s/src:%1$s/madmat', ws);
 addpath(wsPath);
 outputDir = fullfile(ws, 'data', '2025-04-13-b');
 if ~exist(outputDir, 'dir')
