@@ -8,6 +8,7 @@
 	- It assumes uniform scattering energy loss and only focus on the *level* of the received signal which directly relates to attenuation.
 	- One can think of the media model consists of point scatterers with the same echogenicity, but has a varying attenuation map.
 	- By visualizing the *beamformed* `rcvLvl` data (one needs the pixel index `roiIdx` to restore it into grid), one can gain intuitive insights on the *posterior shadows*.
+
 	@date: [created: 2025-04-13, updated: 2025-08-24]
 	@author: madpang
 
@@ -18,10 +19,10 @@
 
 % --- Helper functions ---
 % Functional style subset extraction
-paren = @(x, varargin) x(varargin{:});
+fParen = @(x, varargin) x(varargin{:});
 
 % Mathematica's `Mod[X, n, 1]` equivalent
-mod1 = @(X, n) mod(X - 1, n) + 1;
+fMod1 = @(X, n) mod(X - 1, n) + 1;
 
 % --- Workspace ---
 % @note: Assuming directory structure -- `<workspace-name>/src/<this-script>.m`
@@ -78,8 +79,8 @@ startStamp = sprintf('Computation started at %s', char(datetime('now')));
 fprintf('%s\n', startStamp);
 for ii = 1 : txNum
 	% TX/RX aperture elements index
-	txEleIdx = mod1(paren(circshift(1 : eleNum, txApSz/2), 1 : txApSz) + (ii-1) * txStepSz, eleNum);
-	rxEleIdx = mod1(paren(circshift(1 : eleNum, rxApSz/2), 1 : rxApSz) + (ii-1) * txStepSz, eleNum);
+	txEleIdx = fMod1(fParen(circshift(1 : eleNum, txApSz/2), 1 : txApSz) + (ii-1) * txStepSz, eleNum);
+	rxEleIdx = fMod1(fParen(circshift(1 : eleNum, rxApSz/2), 1 : rxApSz) + (ii-1) * txStepSz, eleNum);
 
 	txApDir = txDir(ii, :);
 	txDirNormal = [0, -1; 1, 0] * txApDir.';
